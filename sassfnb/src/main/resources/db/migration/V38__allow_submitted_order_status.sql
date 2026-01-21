@@ -1,0 +1,5 @@
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS ck_orders_status;
+
+ALTER TABLE orders
+ADD CONSTRAINT ck_orders_status
+CHECK (status IN ('DRAFT','OPEN','SUBMITTED','PAID','CLOSED','VOIDED'));
