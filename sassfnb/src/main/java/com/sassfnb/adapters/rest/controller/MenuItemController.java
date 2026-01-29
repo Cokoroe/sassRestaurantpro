@@ -21,7 +21,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/menu/items")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','STAFF')")
+@PreAuthorize("isAuthenticated()")
 public class MenuItemController {
 
     private final MenuItemService itemService;
@@ -48,14 +48,14 @@ public class MenuItemController {
 
     // CREATE
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public ItemResponse create(@RequestBody @Valid ItemCreateRequest req) {
         return itemService.create(req);
     }
 
     // ✅ NEW: UPLOAD IMAGE (multipart)
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public ItemResponse uploadImage(@PathVariable UUID id,
             @RequestPart("file") MultipartFile file) throws IOException {
         return itemService.uploadImage(id, file);
@@ -72,28 +72,28 @@ public class MenuItemController {
 
     // UPDATE
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public ItemResponse update(@PathVariable UUID id, @RequestBody ItemUpdateRequest req) {
         return itemService.update(id, req);
     }
 
     // PUBLISH (PATCH)
     @PatchMapping("/{id}/publish")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public ItemResponse publish(@PathVariable UUID id, @RequestBody ItemPublishPatchRequest req) {
         return itemService.publish(id, req);
     }
 
     // DELETE
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public void delete(@PathVariable UUID id) {
         itemService.delete(id);
     }
 
     // DUPLICATE
     @PostMapping("/{id}/duplicate")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public DuplicateItemResponse duplicate(@PathVariable UUID id) {
         return itemService.duplicate(id);
     }

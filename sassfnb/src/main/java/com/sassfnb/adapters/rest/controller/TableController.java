@@ -13,7 +13,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','STAFF')")
+@PreAuthorize("isAuthenticated()")
 public class TableController {
 
     private final TableService service;

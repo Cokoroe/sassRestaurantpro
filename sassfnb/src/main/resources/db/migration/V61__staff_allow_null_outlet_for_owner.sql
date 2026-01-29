@@ -1,0 +1,2 @@
+ALTER TABLE staffs
+  ALTER COLUMN outlet_id DROP NOT NULL;

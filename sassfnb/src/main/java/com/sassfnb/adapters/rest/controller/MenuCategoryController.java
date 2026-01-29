@@ -16,7 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/menu/categories")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','STAFF')")
+@PreAuthorize("isAuthenticated()")
 public class MenuCategoryController {
 
     private final MenuCategoryService service;
@@ -32,7 +32,7 @@ public class MenuCategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public CategoryResponse create(@RequestBody @Valid CategoryCreateRequest req) {
         return service.create(req);
     }
@@ -43,19 +43,19 @@ public class MenuCategoryController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public CategoryResponse update(@PathVariable UUID id, @RequestBody CategoryUpdateRequest req) {
         return service.update(id, req);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public void delete(@PathVariable UUID id, @RequestParam(defaultValue = "false") boolean cascade) {
         service.delete(id, cascade);
     }
 
     @PatchMapping("/{id}/reorder")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public void reorder(@PathVariable UUID id, @RequestBody CategoryReorderRequest req) {
         service.reorder(id, req);
     }

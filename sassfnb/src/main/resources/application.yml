@@ -44,7 +44,7 @@ app: # <-- ra ngoài spring
     refresh-token-days: 14
   mail:
     from: taikhoanduynhatkhongaigiong@gmail.com
-    verify-link-base: http://localhost:8080/api/v1/auth/email/verify?token= # hoặc FE URL
+    verify-link-base: # hoặc FE URL
   email:
     verify-expire-minutes: 30
   urls:

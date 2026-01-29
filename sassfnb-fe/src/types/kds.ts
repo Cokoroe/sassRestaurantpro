@@ -16,6 +16,7 @@ export type KdsBoardItem = {
   note?: string | null;
 
   menuItemId: string;
+  menuItemName?: string | null;
   priceId?: string | null;
 
   unitPrice: number;     // BE BigDecimal -> FE number (đang dùng vậy)
@@ -25,6 +26,7 @@ export type KdsBoardItem = {
   orderId: string;
   orderStatus?: string | null;
   tableId?: string | null;
+  tableName?: string | null;  
   people?: number | null;
   orderNote?: string | null;
   openedAt?: string | null;

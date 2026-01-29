@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -75,6 +76,31 @@ public class AuthService {
                 .orElse(null);
     }
 
+    private void ensureOwnerStaff(UUID tenantId, UUID ownerUserId) {
+        // đã có rồi thì thôi
+        if (staffRepo.existsByTenantAndUser(tenantId, ownerUserId)) {
+            return;
+        }
+
+        StaffEntity st = new StaffEntity();
+        st.setTenantId(tenantId);
+        st.setUserId(ownerUserId);
+
+        // Owner mới đăng ký: chưa có restaurant/outlet
+        st.setRestaurantId(null);
+        st.setOutletId(null);
+
+        st.setPosition("OWNER");
+        st.setStatus("ACTIVE");
+        st.setHiredDate(LocalDate.now());
+
+        // code nội bộ (tuỳ bạn)
+        String code = "OWNER-" + ownerUserId.toString().substring(0, 8).toUpperCase();
+        st.setCode(code);
+
+        staffRepo.save(st);
+    }
+
     // ============================================================
     // REGISTER OWNER (owner = chủ 1 hệ thống nhà hàng riêng)
     // ============================================================
@@ -125,6 +151,8 @@ public class AuthService {
                 .build();
 
         tenants.save(tenant);
+
+        ensureOwnerStaff(tenant.getId(), user.getId());
 
         // 5) sinh access token (chứa userId + tenantId + email + roles)
         List<String> roleCodes = loadRoleCodes(user.getId());

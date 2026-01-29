@@ -165,7 +165,7 @@ export default function KdsPage() {
 
   const toggleStatus = (st: KdsItemStatus) => {
     setStatuses((cur) =>
-      cur.includes(st) ? cur.filter((x) => x !== st) : [...cur, st]
+      cur.includes(st) ? cur.filter((x) => x !== st) : [...cur, st],
     );
   };
 
@@ -288,7 +288,7 @@ export default function KdsPage() {
 
             {/* bạn có thể thay menuItemId bằng itemName nếu BE trả về */}
             <div className="text-sm font-bold text-slate-900 truncate">
-              {it.menuItemId}
+              {it.menuItemName?.trim() ? it.menuItemName : it.menuItemId}
             </div>
           </div>
 
@@ -298,7 +298,11 @@ export default function KdsPage() {
               {fmtTime(it.itemCreatedAt)}
             </span>
             <span>Order: {it.orderId}</span>
-            {it.tableId && <span>Table: {it.tableId}</span>}
+            {(it.tableName || it.tableId) && (
+              <span>
+                Table: {it.tableName?.trim() ? it.tableName : it.tableId}
+              </span>
+            )}
           </div>
         </div>
 

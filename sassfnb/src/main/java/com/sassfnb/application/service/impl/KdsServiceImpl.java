@@ -1,9 +1,13 @@
 package com.sassfnb.application.service.impl;
 
+import com.sassfnb.adapters.persistence.entity.MenuItemEntity;
 import com.sassfnb.adapters.persistence.entity.OrderEntity;
 import com.sassfnb.adapters.persistence.entity.OrderItemEntity;
+import com.sassfnb.adapters.persistence.entity.TableEntity;
+import com.sassfnb.adapters.persistence.repository.MenuItemRepository;
 import com.sassfnb.adapters.persistence.repository.OrderItemRepository;
 import com.sassfnb.adapters.persistence.repository.OrderRepository;
+import com.sassfnb.adapters.persistence.repository.TableRepository;
 import com.sassfnb.adapters.rest.dto.kds.KdsDtos.*;
 import com.sassfnb.application.service.KdsService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +27,8 @@ public class KdsServiceImpl implements KdsService {
 
     private final OrderItemRepository itemRepo;
     private final OrderRepository orderRepo;
+    private final MenuItemRepository menuItemRepo;
+    private final TableRepository tableRepo;
 
     @Override
     @Transactional(readOnly = true)
@@ -43,18 +49,60 @@ public class KdsServiceImpl implements KdsService {
 
         List<OrderItemEntity> items = itemRepo.findKdsItems(tenantId, outletId, sinceTs, statusUpper);
 
-        List<UUID> orderIds = items.stream().map(OrderItemEntity::getOrderId).distinct().toList();
+        // ============ Load Orders (để lấy tableId, people, note...) ============
+        List<UUID> orderIds = items.stream()
+                .map(OrderItemEntity::getOrderId)
+                .distinct()
+                .toList();
+
         Map<UUID, OrderEntity> ordersById = orderRepo.findAllById(orderIds).stream()
                 .collect(Collectors.toMap(OrderEntity::getId, o -> o));
 
+        // ============ Load Menu Item Names (batch) ============
+        List<UUID> menuItemIds = items.stream()
+                .map(OrderItemEntity::getMenuItemId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<UUID, String> menuNameById = menuItemRepo.findAllById(menuItemIds).stream()
+                .collect(Collectors.toMap(
+                        MenuItemEntity::getId,
+                        mi -> mi.getName() == null ? "" : mi.getName(),
+                        (a, b) -> a // tránh lỗi nếu trùng key
+                ));
+
+        // ============ Load Table Names (batch) ============
+        List<UUID> tableIds = ordersById.values().stream()
+                .map(OrderEntity::getTableId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        Map<UUID, TableEntity> tableById = tableRepo.findAllById(tableIds).stream()
+                .collect(Collectors.toMap(TableEntity::getId, t -> t));
+
+        // ============ Map DTO ============
         List<KdsBoardItemResponse> dtoItems = items.stream().map(oi -> {
             OrderEntity o = ordersById.get(oi.getOrderId());
+
+            String menuItemName = menuNameById.getOrDefault(oi.getMenuItemId(), null);
+
+            UUID tableId = (o == null ? null : o.getTableId());
+            String tableName = null;
+            if (tableId != null) {
+                TableEntity t = tableById.get(tableId);
+                tableName = (t == null) ? null : buildTableName(t); // tuỳ biến cách hiển thị
+            }
+
             return new KdsBoardItemResponse(
                     oi.getId(),
                     oi.getStatus(),
                     oi.getQuantity(),
                     oi.getNote(),
+
                     oi.getMenuItemId(),
+                    menuItemName, // ✅ NEW
                     oi.getPriceId(),
                     oi.getUnitPrice(),
                     oi.getTotalAmount(),
@@ -62,13 +110,33 @@ public class KdsServiceImpl implements KdsService {
 
                     (o == null ? oi.getOrderId() : o.getId()),
                     (o == null ? null : o.getStatus()),
-                    (o == null ? null : o.getTableId()),
+                    tableId,
+                    tableName, // ✅ NEW
                     (o == null ? null : o.getPeople()),
                     (o == null ? null : o.getNote()),
                     (o == null ? null : o.getOpenedAt()));
         }).toList();
 
         return new KdsBoardsResponse(outletId, sinceTs, statusUpper, dtoItems);
+    }
+
+    private String buildTableName(TableEntity t) {
+        // ví dụ phổ biến: groupCode + code
+        String code = safe(t.getCode());
+        String group = safe(t.getGroupCode());
+
+        if (!group.isBlank() && !code.isBlank())
+            return group + " - " + code;
+        if (!code.isBlank())
+            return code;
+
+        // fallback nếu bạn có field name riêng:
+        // return safe(t.getName());
+        return null;
+    }
+
+    private String safe(String s) {
+        return s == null ? "" : s.trim();
     }
 
     @Override

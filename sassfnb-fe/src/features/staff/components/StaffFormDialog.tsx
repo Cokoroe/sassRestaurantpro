@@ -6,6 +6,7 @@ import type {
   StaffUpdateRequest,
 } from "../../../types/staff";
 import { staffService } from "../../../api/services/staff.service";
+import { rbacService } from "../../../api/services/rbac.service";
 
 type Props = {
   open: boolean;
@@ -13,10 +14,6 @@ type Props = {
   initial?: Staff | null;
   onClose: () => void;
 
-  // NOTE: onSubmit hiện tại của bạn chỉ nhận payload,
-  // mình vẫn giữ, nhưng sẽ dùng staffService.create/update trực tiếp để hỗ trợ create->upload.
-  // Nếu bạn muốn giữ onSubmit như cũ, mình cũng có thể refactor,
-  // nhưng cách dưới là sạch và ít bug hơn cho flow upload.
   onSubmit?: (
     payload: StaffCreateRequest | StaffUpdateRequest,
   ) => Promise<void>;
@@ -24,15 +21,9 @@ type Props = {
   ctxRestaurantId?: string | null;
   ctxOutletId?: string | null;
 
-  // ✅ NEW: để refresh list sau khi tạo/sửa/upload
   onSuccess?: () => Promise<void> | void;
-
-  // ✅ NEW: toast callback optional
   onToast?: (kind: "success" | "error" | "info", message: string) => void;
 };
-
-// ✅ WAITER role cố định
-const DEFAULT_WAITER_ROLE_ID = "2eacff60-9da5-4f1d-85c1-1eeeb488628c";
 
 export default function StaffFormDialog({
   open,
@@ -55,13 +46,21 @@ export default function StaffFormDialog({
   const [hiredDate, setHiredDate] = useState<string>("");
   const [terminatedDate, setTerminatedDate] = useState<string>("");
 
-  // ✅ NEW: avatar file + preview
+  // avatar
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
 
+  // submit state
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+  // ✅ NEW: WAITER role
+  const [waiterRoleId, setWaiterRoleId] = useState<string>("");
+  const [roleLoading, setRoleLoading] = useState(false);
+
+  /* =======================
+   * Init form
+   * ======================= */
   useEffect(() => {
     if (!open) return;
 
@@ -74,7 +73,6 @@ export default function StaffFormDialog({
       setAvatarUrl(initial.avatarUrl ?? "");
       setHiredDate(initial.hiredDate ?? "");
       setTerminatedDate(initial.terminatedDate ?? "");
-
       setAvatarFile(null);
       setAvatarPreview("");
       return;
@@ -89,25 +87,74 @@ export default function StaffFormDialog({
     setAvatarUrl("");
     setHiredDate("");
     setTerminatedDate("");
-
     setAvatarFile(null);
     setAvatarPreview("");
   }, [open, isEdit, initial]);
 
-  // cleanup preview url
+  /* =======================
+   * Load WAITER role (CREATE only)
+   * ======================= */
+  useEffect(() => {
+    if (!open || isEdit) return;
+
+    const loadWaiterRole = async () => {
+      setRoleLoading(true);
+      try {
+        const roles = await rbacService.listRoles();
+
+        const waiter =
+          (roles ?? []).find(
+            (r: any) => String(r.code || "").toUpperCase() === "WAITER",
+          ) ||
+          (roles ?? []).find(
+            (r: any) => String(r.code || "").toUpperCase() === "STAFF",
+          );
+
+        if (!waiter?.id) {
+          setWaiterRoleId("");
+          onToast?.(
+            "error",
+            "Không tìm thấy role WAITER (hoặc STAFF) trong hệ thống.",
+          );
+          return;
+        }
+
+        setWaiterRoleId(waiter.id);
+      } catch (e: any) {
+        setWaiterRoleId("");
+        onToast?.("error", e?.message || "Không tải được danh sách role.");
+      } finally {
+        setRoleLoading(false);
+      }
+    };
+
+    loadWaiterRole();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEdit]);
+
+  /* =======================
+   * Cleanup preview
+   * ======================= */
   useEffect(() => {
     return () => {
       if (avatarPreview) URL.revokeObjectURL(avatarPreview);
     };
   }, [avatarPreview]);
 
+  /* =======================
+   * Validation
+   * ======================= */
   const canSubmit = useMemo(() => {
     if (!ctxRestaurantId || !ctxOutletId) return false;
     if (!fullName.trim()) return false;
     if (!isEdit && !email.trim()) return false;
+    if (!isEdit && !waiterRoleId) return false; // ✅ need role
     return true;
-  }, [ctxRestaurantId, ctxOutletId, fullName, isEdit, email]);
+  }, [ctxRestaurantId, ctxOutletId, fullName, isEdit, email, waiterRoleId]);
 
+  /* =======================
+   * Avatar helpers
+   * ======================= */
   const handlePickAvatar = (file: File | null) => {
     setAvatarFile(file);
 
@@ -116,7 +163,6 @@ export default function StaffFormDialog({
       setAvatarPreview("");
       return;
     }
-
     setAvatarPreview(URL.createObjectURL(file));
   };
 
@@ -137,6 +183,9 @@ export default function StaffFormDialog({
     }
   };
 
+  /* =======================
+   * Submit
+   * ======================= */
   const handleSubmit = async () => {
     if (!canSubmit) return;
 
@@ -148,17 +197,14 @@ export default function StaffFormDialog({
           outletId: ctxOutletId!,
           code: code || undefined,
           position: position || undefined,
-          avatarUrl: avatarUrl || undefined, // vẫn cho set thủ công nếu cần
+          avatarUrl: avatarUrl || undefined,
           hiredDate: hiredDate || undefined,
           terminatedDate: terminatedDate || undefined,
           fullName: fullName || undefined,
           phone: phone || undefined,
         };
 
-        // 1) update staff
         const updated = await staffService.update(initial.id, payload);
-
-        // 2) nếu có file thì upload avatar (ưu tiên file hơn url)
         await uploadAvatarIfNeeded(updated.id);
 
         onToast?.("success", "Đã cập nhật nhân viên.");
@@ -171,21 +217,17 @@ export default function StaffFormDialog({
       const createPayload: StaffCreateRequest = {
         restaurantId: ctxRestaurantId!,
         outletId: ctxOutletId!,
-        roleId: DEFAULT_WAITER_ROLE_ID,
+        roleId: waiterRoleId, // ✅ dynamic from BE
         email: email.trim(),
         fullName: fullName.trim(),
         phone: phone || undefined,
         code: code || undefined,
         position: position || undefined,
-        avatarUrl: avatarUrl || undefined, // nếu user dán url
+        avatarUrl: avatarUrl || undefined,
         hiredDate: hiredDate || undefined,
       };
 
-      // 1) create staff
       const created = await staffService.create(createPayload);
-
-      // 2) auto upload avatar nếu user đã chọn file
-      // (Nếu bạn không muốn auto upload sau create thì comment dòng này)
       await uploadAvatarIfNeeded(created.id);
 
       onToast?.("success", "Đã tạo nhân viên.");
@@ -201,6 +243,9 @@ export default function StaffFormDialog({
 
   if (!open) return null;
 
+  /* =======================
+   * UI
+   * ======================= */
   return (
     <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl">
@@ -227,10 +272,6 @@ export default function StaffFormDialog({
                 className="mt-1 w-full rounded-xl border px-3 py-2"
                 placeholder="staff@email.com"
               />
-              <p className="mt-1 text-xs text-slate-500">
-                Khi tạo, hệ thống sẽ tự tạo tài khoản user nếu email chưa tồn
-                tại.
-              </p>
             </div>
           )}
 
@@ -240,7 +281,6 @@ export default function StaffFormDialog({
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="Nguyễn Văn A"
             />
           </div>
 
@@ -250,7 +290,6 @@ export default function StaffFormDialog({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="09xxxxxxx"
             />
           </div>
 
@@ -260,7 +299,6 @@ export default function StaffFormDialog({
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="NV001"
             />
           </div>
 
@@ -270,67 +308,28 @@ export default function StaffFormDialog({
               value={position}
               onChange={(e) => setPosition(e.target.value)}
               className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="WAITER / CASHIER..."
             />
           </div>
 
-          {/* ✅ Avatar upload */}
           <div>
             <label className="text-sm font-medium">Avatar (Upload)</label>
             <input
               type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp"
+              accept="image/*"
               onChange={(e) => handlePickAvatar(e.target.files?.[0] ?? null)}
               className="mt-1 w-full rounded-xl border px-3 py-2"
-              disabled={uploading || saving}
+              disabled={saving || uploading}
             />
-            <p className="mt-1 text-xs text-slate-500">
-              PNG/JPG/WEBP tối đa 5MB.
-            </p>
           </div>
 
-          {/* ✅ Avatar preview + url */}
           <div>
             <label className="text-sm font-medium">Avatar URL</label>
             <input
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
               className="mt-1 w-full rounded-xl border px-3 py-2"
-              placeholder="https://..."
-              disabled={uploading || saving}
+              disabled={saving || uploading}
             />
-            <div className="mt-2 flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl border overflow-hidden bg-slate-50">
-                {avatarPreview ? (
-                  <img
-                    src={avatarPreview}
-                    alt="preview"
-                    className="h-full w-full object-cover"
-                  />
-                ) : avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="avatar"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-xs text-slate-400">
-                    No
-                  </div>
-                )}
-              </div>
-
-              {isEdit && initial?.id && avatarFile && (
-                <button
-                  type="button"
-                  onClick={() => uploadAvatarIfNeeded(initial.id)}
-                  className="rounded-xl border px-3 py-2 hover:bg-slate-50 disabled:opacity-50"
-                  disabled={uploading || saving}
-                >
-                  {uploading ? "Đang upload..." : "Upload ngay"}
-                </button>
-              )}
-            </div>
           </div>
 
           <div>
@@ -340,7 +339,6 @@ export default function StaffFormDialog({
               value={hiredDate}
               onChange={(e) => setHiredDate(e.target.value)}
               className="mt-1 w-full rounded-xl border px-3 py-2"
-              disabled={uploading || saving}
             />
           </div>
 
@@ -352,7 +350,6 @@ export default function StaffFormDialog({
                 value={terminatedDate}
                 onChange={(e) => setTerminatedDate(e.target.value)}
                 className="mt-1 w-full rounded-xl border px-3 py-2"
-                disabled={uploading || saving}
               />
             </div>
           )}
@@ -361,17 +358,23 @@ export default function StaffFormDialog({
         <div className="flex items-center justify-end gap-2 p-5 border-t">
           <button
             onClick={onClose}
-            className="rounded-xl px-4 py-2 hover:bg-slate-100 disabled:opacity-50"
+            className="rounded-xl px-4 py-2 hover:bg-slate-100"
             disabled={saving || uploading}
           >
             Hủy
           </button>
           <button
-            disabled={!canSubmit || saving || uploading}
             onClick={handleSubmit}
+            disabled={!canSubmit || saving || uploading || roleLoading}
             className="rounded-xl px-4 py-2 bg-slate-900 text-white disabled:opacity-50"
           >
-            {saving ? "Đang lưu..." : uploading ? "Đang upload..." : "Lưu"}
+            {roleLoading
+              ? "Đang tải role..."
+              : saving
+                ? "Đang lưu..."
+                : uploading
+                  ? "Đang upload..."
+                  : "Lưu"}
           </button>
         </div>
       </div>

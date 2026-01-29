@@ -63,7 +63,10 @@ public class SecurityConfig {
                         "/api/v1/rbac/roles/**",
                         "/api/v1/rbac/user-roles",
                         "/api/v1/rbac/user-roles/**",
-                        "/api/v1/rbac/effective"
+                        "/api/v1/rbac/effective",
+                        "/api/v1/attendance/**",
+                        "/api/v1/tables/**"
+
         };
 
         private static final String[] TENANT_CONFIG = {
@@ -164,10 +167,6 @@ public class SecurityConfig {
                                                 // Tenant config
                                                 .requestMatchers(TENANT_CONFIG)
                                                 .hasAnyAuthority("ROOT", "OWNER", "ADMIN")
-
-                                                // Tables
-                                                .requestMatchers("/api/v1/tables/**")
-                                                .hasAnyAuthority("ROOT", "OWNER", "ADMIN", "STAFF")
 
                                                 // Authenticated chung
                                                 .requestMatchers(AUTHENTICATED_COMMON).authenticated()

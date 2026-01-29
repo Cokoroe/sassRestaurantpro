@@ -12,7 +12,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/menu/options")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','STAFF')")
+@PreAuthorize("isAuthenticated()")
 public class MenuOptionController {
 
     private final MenuOptionService service;
@@ -27,7 +27,7 @@ public class MenuOptionController {
 
     // Tạo option cho 1 item
     @PostMapping("/item/{itemId}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public OptionResponse addOption(
             @PathVariable UUID itemId,
             @RequestBody OptionCreateRequest req) {
@@ -36,7 +36,7 @@ public class MenuOptionController {
 
     // Cập nhật / Xoá option
     @PutMapping("/{optionId}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public OptionResponse updateOption(
             @PathVariable UUID optionId,
             @RequestBody OptionUpdateRequest req) {
@@ -44,7 +44,7 @@ public class MenuOptionController {
     }
 
     @DeleteMapping("/{optionId}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public void deleteOption(@PathVariable UUID optionId) {
         service.deleteOption(optionId);
     }
@@ -57,7 +57,7 @@ public class MenuOptionController {
     }
 
     @PostMapping("/{optionId}/values")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public OptionValueResponse addValue(
             @PathVariable UUID optionId,
             @RequestBody OptionValueCreateRequest req) {
@@ -65,7 +65,7 @@ public class MenuOptionController {
     }
 
     @PutMapping("/values/{valueId}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public OptionValueResponse updateValue(
             @PathVariable UUID valueId,
             @RequestBody OptionValueUpdateRequest req) {
@@ -73,7 +73,7 @@ public class MenuOptionController {
     }
 
     @DeleteMapping("/values/{valueId}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public void deleteValue(@PathVariable UUID valueId) {
         service.deleteValue(valueId);
     }

@@ -34,7 +34,7 @@ public class StaffEntity {
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
     private UUID userId;
 
-    @Column(name = "restaurant_id", nullable = false, columnDefinition = "uuid")
+    @Column(name = "restaurant_id", columnDefinition = "uuid")
     private UUID restaurantId;
 
     @Column(name = "outlet_id", columnDefinition = "uuid")

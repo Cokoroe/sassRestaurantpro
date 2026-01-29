@@ -21,13 +21,13 @@ public class AttendanceController {
 
     /** Staff tự chấm công */
     @PostMapping("/clock-in")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public AttendanceResponse clockIn(@RequestBody AttendanceClockInRequest request) {
         return attendanceService.clockIn(request);
     }
 
     @PostMapping("/clock-out")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public AttendanceResponse clockOut(@RequestBody AttendanceClockOutRequest request) {
         return attendanceService.clockOut(request);
     }
@@ -39,7 +39,7 @@ public class AttendanceController {
      * - staffId null => report all (theo outlet + date range)
      */
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public Page<AttendanceResponse> search(
             @RequestParam(required = false) UUID outletId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,

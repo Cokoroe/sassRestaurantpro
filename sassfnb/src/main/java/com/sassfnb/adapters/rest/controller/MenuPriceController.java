@@ -13,7 +13,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/menu/items")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN','STAFF')")
+@PreAuthorize("isAuthenticated()")
 public class MenuPriceController {
 
     private final MenuPriceService service;
@@ -25,27 +25,27 @@ public class MenuPriceController {
     }
 
     @PostMapping("/{id}/prices")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public PriceResponse createPrice(@PathVariable UUID id, @RequestBody PriceCreateRequest req) {
         return service.createPrice(id, req);
     }
 
     @PutMapping("/{id}/prices/{priceId}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public PriceResponse updatePrice(@PathVariable UUID id, @PathVariable UUID priceId,
             @RequestBody PriceUpdateRequest req) {
         return service.updatePrice(id, priceId, req);
     }
 
     @PatchMapping("/{id}/prices/{priceId}/activate")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public PriceResponse activate(@PathVariable UUID id, @PathVariable UUID priceId,
             @RequestBody PriceActivatePatchRequest req) {
         return service.activatePrice(id, priceId, req);
     }
 
     @DeleteMapping("/{id}/prices/{priceId}")
-    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROOT','OWNER','MANAGER')")
     public void deletePrice(@PathVariable UUID id, @PathVariable UUID priceId) {
         service.deletePrice(id, priceId);
     }
